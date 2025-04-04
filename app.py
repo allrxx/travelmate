@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 import os
+import random
 
 app = Flask(__name__)
 
@@ -20,6 +21,17 @@ class User(db.Model):
 # Create tables
 with app.app_context():
     db.create_all()
+
+# Tour Package Data
+tour_packages = [
+    {"id": 1, "location": "Paris", "price": 1500, "days": 5, "food": True},
+    {"id": 2, "location": "Maldives", "price": 2000, "days": 7, "food": False},
+    {"id": 3, "location": "Tokyo", "price": 1800, "days": 6, "food": True},
+    {"id": 4, "location": "New York", "price": 1200, "days": 4, "food": False},
+]
+
+# Store booked packages
+booked_packages = []
 
 # Redirect home to the login page
 @app.route("/")
@@ -62,20 +74,128 @@ def signup():
 # Dashboard route (protected page)
 @app.route("/dashboard")
 def dashboard():
-    if "user_id" not in session:  # Check if the user is logged in
+    if "user_id" not in session:  # Ensure the user is logged in
         return redirect(url_for("login"))
     
-    # Fetch user details from the database
+    # Fetch user details
     user = User.query.get(session["user_id"])
     
-    # Pass user data to the template
-    return render_template("dashboard.html", username=user.username, email=user.email)
+    return render_template(
+        "dashboard.html",
+        username=user.username,
+        email=user.email,
+        tour_packages=tour_packages,
+        booked_packages=booked_packages,
+    )
 
 # Logout route
 @app.route("/logout")
 def logout():
     session.pop("user_id", None)  # Remove user session
     return redirect(url_for("login"))
+
+@app.route("/book_ticket", methods=["POST"])
+def book_ticket():
+    if "user_id" not in session:  # Ensure the user is logged in
+        return redirect(url_for("login"))
+    
+    # Get form data
+    start_location = request.form["start_location"]
+    final_location = request.form["final_location"]
+    travel_date = request.form["travel_date"]
+    
+    # Generate a random price between 1000 and 2000
+    ticket_price = random.randint(1000, 2000)
+    
+    # Fetch user details from the database
+    user = User.query.get(session["user_id"])
+    
+    # Render the ticket details
+    return render_template(
+        "dashboard.html",
+        username=user.username,
+        email=user.email,
+        start_location=start_location,
+        final_location=final_location,
+        travel_date=travel_date,
+        ticket_price=ticket_price,
+        ticket_generated=True  # Flag to show ticket details
+    )
+
+@app.route("/book_package", methods=["POST"])
+def book_package():
+    if "user_id" not in session:  # Ensure the user is logged in
+        return redirect(url_for("login"))
+    
+    # Get the selected package ID from the form
+    package_id = int(request.form["package_id"])
+    
+    # Find the selected package
+    selected_package = next((pkg for pkg in tour_packages if pkg["id"] == package_id), None)
+    
+    if selected_package:
+        # Fetch user details
+        user = User.query.get(session["user_id"])
+        
+        # Add user details to the package
+        booked_package = {
+            "username": user.username,
+            "email": user.email,
+            "location": selected_package["location"],
+            "price": selected_package["price"],
+            "days": selected_package["days"],
+            "food": "Yes" if selected_package["food"] else "No",
+        }
+        booked_packages.append(booked_package)
+    
+    return redirect(url_for("dashboard"))
+
+@app.route("/cart")
+def cart():
+    if "user_id" not in session:  # Ensure the user is logged in
+        return redirect(url_for("login"))
+    
+    # Calculate the total cost of booked packages
+    total_cost = sum(package["price"] for package in booked_packages)
+    
+    return render_template(
+        "cart.html",
+        booked_packages=booked_packages,
+        total_cost=total_cost
+    )
+
+@app.route("/bill")
+def generate_bill():
+    if "user_id" not in session:  # Ensure the user is logged in
+        return redirect(url_for("login"))
+    
+    # Fetch user details
+    user = User.query.get(session["user_id"])
+    
+    # Calculate the total cost of booked packages
+    total_cost = sum(package["price"] for package in booked_packages)
+    
+    return render_template(
+        "bill.html",
+        username=user.username,
+        email=user.email,
+        booked_packages=booked_packages,
+        total_cost=total_cost
+    )
+
+@app.route("/remove_from_cart", methods=["POST"])
+def remove_from_cart():
+    if "user_id" not in session:  # Ensure the user is logged in
+        return redirect(url_for("login"))
+    
+    # Get the index of the package to remove
+    package_index = int(request.form["package_index"])
+    
+    # Remove the package from the booked_packages list
+    if 0 <= package_index < len(booked_packages):
+        booked_packages.pop(package_index)
+    
+    return redirect(url_for("cart"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
