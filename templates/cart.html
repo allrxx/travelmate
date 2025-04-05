@@ -14,7 +14,7 @@
   <style>
     .cart-header {
       display: flex;
-      justify-content: space-between;
+      gap: 2rem;
       align-items: center;
       margin-bottom: 1.5rem;
     }
@@ -123,7 +123,7 @@
     <!-- Total Cost and Pay Button -->
     <div class="pay-button-container">
       <h3 class="me-auto">Total Cost: ${{ total_cost }}</h3>
-      <a href="{{ url_for('generate_bill') }}" class="btn btn-pay">Pay</a>
+      <a href="{{ url_for('payment') }}" class="btn btn-pay">Pay</a>
     </div>
     {% else %}
     <!-- Empty Cart Message -->
