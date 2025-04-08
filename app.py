@@ -1,23 +1,31 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 import os
 import random
 from datetime import datetime
+from flask_login import LoginManager, login_required, current_user, UserMixin, login_user, logout_user
 
 app = Flask(__name__)
 
 # Database connection (uses DATABASE_URL environment variable if set)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://dhiya07:123%40dhiyaravi@my-postgres:5432/mydatabase')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')  # Secret key for session management
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_secret_key')  # Secret key for session management
 db = SQLAlchemy(app)
 
-# User model
-class User(db.Model):
+# Flask-Login setup
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login' # Redirect to login page if user is not logged in
+
+# User model - Add UserMixin
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
+    # Add backref for bookings
+    bookings = db.relationship('Booking', backref='user', lazy=True)
 
 # Booking model
 class Booking(db.Model):
@@ -33,6 +41,11 @@ class Booking(db.Model):
 # Create tables
 with app.app_context():
     db.create_all()
+
+# User loader function for Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 # Tour Package Data
 tour_packages = [
@@ -72,9 +85,10 @@ def login():
         # Check credentials (in production, use hashed passwords)
         user = User.query.filter_by(username=username).first()
         if user and user.password == password:
-            session["user_id"] = user.id  # Store user ID in session
+            login_user(user)  # Use flask_login's login_user
             return redirect(url_for("dashboard"))
-        return "Invalid credentials", 401
+        flash('Invalid credentials', 'danger')
+        return redirect(url_for("login"))
     return render_template("login.html")
 
 # Process the sign-up form
@@ -93,20 +107,15 @@ def signup():
 
 # Dashboard route (protected page)
 @app.route("/dashboard")
+@login_required
 def dashboard():
-    if "user_id" not in session:  # Ensure the user is logged in
-        return redirect(url_for("login"))
-    
-    # Fetch user details
-    user = User.query.get(session["user_id"])
-    
     # Fetch user's booking history
-    booking_history = Booking.query.filter_by(user_id=user.id).order_by(Booking.booking_date.desc()).all()
+    booking_history = Booking.query.filter_by(user_id=current_user.id).order_by(Booking.booking_date.desc()).all()
     
     return render_template(
         "dashboard.html",
-        username=user.username,
-        email=user.email,
+        username=current_user.username,
+        email=current_user.email,
         tour_packages=tour_packages,
         booked_packages=booked_packages,
         booking_history=booking_history
@@ -115,14 +124,12 @@ def dashboard():
 # Logout route
 @app.route("/logout")
 def logout():
-    session.pop("user_id", None)  # Remove user session
+    logout_user()  # Use flask_login's logout_user
     return redirect(url_for("login"))
 
 @app.route("/book_ticket", methods=["POST"])
+@login_required
 def book_ticket():
-    if "user_id" not in session:  # Ensure the user is logged in
-        return redirect(url_for("login"))
-    
     # Get form data
     start_location = request.form["start_location"]
     final_location = request.form["final_location"]
@@ -131,14 +138,10 @@ def book_ticket():
     # Generate a random price between 1000 and 2000
     ticket_price = random.randint(1000, 2000)
     
-    # Fetch user details from the database
-    user = User.query.get(session["user_id"])
-    
-    # Render the ticket details
     return render_template(
         "dashboard.html",
-        username=user.username,
-        email=user.email,
+        username=current_user.username,
+        email=current_user.email,
         start_location=start_location,
         final_location=final_location,
         travel_date=travel_date,
@@ -147,10 +150,8 @@ def book_ticket():
     )
 
 @app.route("/book_package", methods=["POST"])
+@login_required
 def book_package():
-    if "user_id" not in session:  # Ensure the user is logged in
-        return redirect(url_for("login"))
-    
     # Get the selected package ID from the form
     package_id = int(request.form["package_id"])
     
@@ -158,13 +159,10 @@ def book_package():
     selected_package = next((pkg for pkg in tour_packages if pkg["id"] == package_id), None)
     
     if selected_package:
-        # Fetch user details
-        user = User.query.get(session["user_id"])
-        
         # Add user details to the package
         booked_package = {
-            "username": user.username,
-            "email": user.email,
+            "username": current_user.username,
+            "email": current_user.email,
             "location": selected_package["location"],
             "price": selected_package["price"],
             "days": selected_package["days"],
@@ -175,10 +173,8 @@ def book_package():
     return redirect(url_for("dashboard"))
 
 @app.route("/cart")
+@login_required
 def cart():
-    if "user_id" not in session:  # Ensure the user is logged in
-        return redirect(url_for("login"))
-    
     # Calculate the total cost of booked packages
     total_cost = sum(package["price"] for package in booked_packages)
     
@@ -189,10 +185,8 @@ def cart():
     )
 
 @app.route("/remove_from_cart", methods=["POST"])
+@login_required
 def remove_from_cart():
-    if "user_id" not in session:  # Ensure the user is logged in
-        return redirect(url_for("login"))
-    
     # Get the index of the package to remove
     package_index = int(request.form["package_index"])
     
@@ -203,10 +197,8 @@ def remove_from_cart():
     return redirect(url_for("cart"))
 
 @app.route("/payment", methods=["GET", "POST"])
+@login_required
 def payment():
-    if "user_id" not in session:  # Ensure the user is logged in
-        return redirect(url_for("login"))
-    
     if request.method == "POST":
         payment_method = request.form["payment_method"]
         session["payment_method"] = payment_method  # Store payment method in session
@@ -215,13 +207,8 @@ def payment():
     return render_template("payment.html")
 
 @app.route("/bill")
+@login_required
 def bill():
-    if "user_id" not in session:  # Ensure the user is logged in
-        return redirect(url_for("login"))
-    
-    # Fetch user details
-    user = User.query.get(session["user_id"])
-    
     # Fetch payment method from session
     payment_method = session.get("payment_method", "Unknown")
     
@@ -231,7 +218,7 @@ def bill():
     # Save booked packages to the database
     for package in booked_packages:
         new_booking = Booking(
-            user_id=user.id,
+            user_id=current_user.id,
             location=package["location"],
             price=package["price"],
             days=package["days"],
@@ -248,8 +235,8 @@ def bill():
     # Render the bill
     rendered_bill = render_template(
         "bill.html",
-        username=user.username,
-        email=user.email,
+        username=current_user.username,
+        email=current_user.email,
         booked_packages=booked_packages,
         total_cost=total_cost,
         payment_method=payment_method,
@@ -260,6 +247,15 @@ def bill():
     booked_packages.clear()
     
     return rendered_bill
+
+@app.route('/bill/<int:booking_id>')
+@login_required
+def view_bill(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    if booking.user_id != current_user.id:
+        flash('You are not authorized to view this bill.', 'danger')
+        return redirect(url_for('dashboard'))
+    return render_template('bill.html', booking=booking)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
