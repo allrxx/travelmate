@@ -86,14 +86,16 @@
       <h2 class="text-center section-title">Available Tour Packages</h2>
       <div class="row mt-4">
         {% for package in tour_packages %}
-        <div class="col-md-6 col-lg-4">
-          <div class="card dashboard-card">
-            <div class="card-body">
+        <div class="col-lg-4 col-md-4 col-sm-6 mb-4">
+          <div class="card dashboard-card h-100">
+            <img src="{{ package.image_url }}" class="card-img-top" alt="{{ package.location }}" style="height: 300px; object-fit: cover;" loading="lazy">
+            <div class="card-body d-flex flex-column">
               <h5 class="card-title">{{ package.location }}</h5>
+              <p class="card-text text-muted mb-2">{{ package.description }}</p>
               <p><strong>Price:</strong> ${{ package.price }}</p>
               <p><strong>Days:</strong> {{ package.days }}</p>
               <p><strong>Food Provided:</strong> {{ "Yes" if package.food else "No" }}</p>
-              <form action="{{ url_for('book_package') }}" method="POST">
+              <form action="{{ url_for('book_package') }}" method="POST" class="mt-auto">
                 <input type="hidden" name="package_id" value="{{ package.id }}">
                 <button type="submit" class="btn btn-primary w-100">Book Package</button>
               </form>

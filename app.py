@@ -36,10 +36,18 @@ with app.app_context():
 
 # Tour Package Data
 tour_packages = [
-    {"id": 1, "location": "Paris", "price": 1500, "days": 5, "food": True},
-    {"id": 2, "location": "Maldives", "price": 2000, "days": 7, "food": False},
-    {"id": 3, "location": "Tokyo", "price": 1800, "days": 6, "food": True},
-    {"id": 4, "location": "New York", "price": 1200, "days": 4, "food": False},
+    {"id": 1, "location": "Paris", "price": 15000, "days": 5, "food": True, "image_url": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1473&q=80", "description": "Experience the romance and charm of the City of Lights."},
+    {"id": 2, "location": "Maldives", "price": 20000, "days": 7, "food": False, "image_url": "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1374&q=80", "description": "Relax in luxury overwater bungalows and pristine beaches."},
+    {"id": 3, "location": "Tokyo", "price": 18000, "days": 6, "food": True, "image_url": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1494&q=80", "description": "Explore the vibrant culture and futuristic cityscape of Japan's capital."},
+    {"id": 4, "location": "New York", "price": 12000, "days": 4, "food": False, "image_url": "https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80", "description": "Discover the iconic landmarks and bustling energy of the Big Apple."},
+    {"id": 5, "location": "Rome", "price": 16000, "days": 6, "food": True, "image_url": "https://images.unsplash.com/photo-1529260830199-42c24126f198?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1476&q=80", "description": "Step back in time and explore ancient ruins and timeless art."},
+    {"id": 6, "location": "Bali", "price": 17500, "days": 8, "food": False, "image_url": "https://images.unsplash.com/photo-1573790387438-4da905039392?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1527&q=80", "description": "Find serenity amidst lush rice paddies and beautiful temples."},
+    {"id": 7, "location": "Santorini", "price": 22000, "days": 7, "food": True, "image_url": "https://images.unsplash.com/photo-1533105079780-fcf496267d16?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80", "description": "Witness breathtaking sunsets over the caldera in this Greek paradise."},
+    {"id": 8, "location": "London", "price": 14000, "days": 5, "food": True, "image_url": "https://images.unsplash.com/photo-1505761671935-60b3a7427bad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80", "description": "Explore historic landmarks, royal palaces, and vibrant markets."}, 
+    {"id": 9, "location": "Sydney", "price": 19000, "days": 9, "food": False, "image_url": "https://images.unsplash.com/photo-1524293581917-878a6d067c5d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80", "description": "See the iconic Opera House and enjoy stunning harbor views."}, 
+    {"id": 10, "location": "Rio de Janeiro", "price": 17000, "days": 7, "food": True, "image_url": "https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80", "description": "Experience the energy of Carnival, Christ the Redeemer, and Copacabana."}, 
+    {"id": 11, "location": "Cape Town", "price": 18500, "days": 8, "food": False, "image_url": "https://images.unsplash.com/photo-1576487248902-f53f4e8e6c03?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80", "description": "Discover stunning Table Mountain, penguins, and vibrant culture."}, 
+    {"id": 12, "location": "Bangkok", "price": 13000, "days": 6, "food": True, "image_url": "https://images.unsplash.com/photo-1533106497176-45ae19e68ba2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80", "description": "Immerse yourself in ornate temples, bustling markets, and delicious street food."}
 ]
 
 # Store booked packages
@@ -179,8 +187,6 @@ def cart():
         booked_packages=booked_packages,
         total_cost=total_cost
     )
-
-
 
 @app.route("/remove_from_cart", methods=["POST"])
 def remove_from_cart():
