@@ -1,5 +1,6 @@
 import unittest
 import time
+# Removed unused sys import
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -14,6 +15,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 class TravelEasyAppTests(unittest.TestCase):
 
+    # ... (setUp, tearDown, _login remain the same) ...
     def setUp(self):
         # Initialize WebDriver (using Chrome in this example)
         options = webdriver.ChromeOptions()
@@ -131,35 +133,24 @@ class TravelEasyAppTests(unittest.TestCase):
         """Tests adding a package to the cart and verifying it."""
         print("Running test_add_package_to_cart...")
         driver = self.driver
-        # Use admin credentials, ensure this user exists
         self._login("admin", "admin")
 
-        # --- Booking Phase ---
-        # Find the "Book Now" button for the first package (Paris)
         print("Finding 'Book Now' button for the first package...")
         book_button_locator = (By.XPATH, "(//button[normalize-space()='Book Now'])[1]")
-        # Find the element first to scroll it
         book_button = self.wait.until(EC.presence_of_element_located(book_button_locator))
-
-        # Find package name more reliably
         package_card = driver.find_element(By.XPATH, "(//div[contains(@class, 'dashboard-card')])[1]")
         package_name = package_card.find_element(By.XPATH, ".//h5[@class='card-title']").text
         print(f"Found package: {package_name}. Attempting to click 'Book Now'...")
 
         try:
-            # Scroll the button into the center of the view using JavaScript
             driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", book_button)
-            time.sleep(0.5) # Brief pause after scrolling to allow layout to settle
-
-            # Wait until the button is clickable *after* scrolling
+            time.sleep(0.5)
             clickable_book_button = self.wait.until(EC.element_to_be_clickable(book_button_locator))
             clickable_book_button.click()
             print("Book Now clicked successfully.")
-
         except ElementClickInterceptedException:
             print("Standard click failed due to interception. Trying JavaScript click...")
             try:
-                # Fallback: Use JavaScript to click - use the 'book_button' element reference
                 driver.execute_script("arguments[0].click();", book_button)
                 print("Book Now clicked using JavaScript.")
             except Exception as js_e:
@@ -167,47 +158,53 @@ class TravelEasyAppTests(unittest.TestCase):
         except Exception as e:
              self.fail(f"An unexpected error occurred when trying to click 'Book Now': {e}")
 
-        # --- End Booking Phase ---
+        # **** ADDED PAUSE ****
+        time.sleep(0.5) # Short pause for DOM to stabilize after booking click
 
-        # --- Cart Verification Phase ---
-        # Navigate to the cart using WebDriverWait
         print("Navigating to cart...")
-        # **** FIX: Re-locate the cart button AFTER the book button click ****
         cart_button_locator = (By.XPATH, "//a[normalize-space()='View Cart']")
-        cart_button = self.wait.until(EC.element_to_be_clickable(cart_button_locator))
-        cart_button.click()
+        try:
+            # Wait for clickable and then click
+            cart_button = self.wait.until(EC.element_to_be_clickable(cart_button_locator))
+            cart_button.click()
+        except TimeoutException:
+             self.fail("Timed out waiting for 'View Cart' button to be clickable.")
+        except ElementClickInterceptedException:
+             print("Standard click failed for View Cart. Trying JS click...")
+             try:
+                 # Find the element again before JS click, just in case
+                 cart_button_element = self.wait.until(EC.presence_of_element_located(cart_button_locator))
+                 driver.execute_script("arguments[0].click();", cart_button_element)
+                 print("View Cart clicked using JavaScript.")
+             except Exception as js_e:
+                 self.fail(f"Both clicks failed for 'View Cart' button. JS Error: {js_e}")
+        except Exception as e:
+             self.fail(f"Error clicking 'View Cart': {e}")
 
-        # Wait for cart URL
+
         self.wait.until(EC.url_to_be(self.base_url + "/cart"))
         self.assertEqual(driver.current_url, self.base_url + "/cart")
         print("On cart page.")
 
-        # Check if the booked package is in the cart using WebDriverWait and specific class
         try:
             print(f"Verifying if '{package_name}' is in the cart...")
-            # Use a more specific locator for the cart item title
             cart_item_title = self.wait.until(EC.presence_of_element_located((By.XPATH, f"//h3[@class='cart-item-title' and contains(text(), '{package_name}')]")))
             self.assertIsNotNone(cart_item_title, f"{package_name} not found in cart")
             print(f"'{package_name}' found in cart.")
         except TimeoutException:
             self.fail(f"Timed out waiting for package '{package_name}' to appear in the cart.")
-        except NoSuchElementException: # Should be caught by WebDriverWait, but good practice
+        except NoSuchElementException:
             self.fail(f"Package '{package_name}' was not found in the cart using XPath.")
-        # --- End Cart Verification Phase ---
 
         print("test_add_package_to_cart PASSED")
 
     def test_book_package_and_verify_history(self):
         """Tests the full flow: book, checkout, verify bill, verify history."""
-        # ... (test_book_package_and_verify_history remains the same up to step 6) ...
         print("Running test_book_package_and_verify_history...")
         driver = self.driver
-        package_to_book = "Paris" # Define the package we are testing with
+        package_to_book = "Paris"
+        self._login("admin", "admin")
 
-        # 1. Login
-        self._login("admin", "admin") # Ensure admin user exists
-
-        # 2. Book Package (Paris - assuming it's the first one)
         print(f"Finding 'Book Now' for {package_to_book}...")
         book_button_locator = (By.XPATH, f"//div[contains(@class, 'dashboard-card')][.//h5[contains(text(), '{package_to_book}')]]//button[normalize-space()='Book Now']")
         book_button = self.wait.until(EC.presence_of_element_located(book_button_locator))
@@ -228,15 +225,33 @@ class TravelEasyAppTests(unittest.TestCase):
         except Exception as e:
              self.fail(f"Error clicking 'Book Now': {e}")
 
-        # 3. Navigate to Cart
+        # **** ADDED PAUSE ****
+        time.sleep(0.5) # Short pause for DOM to stabilize after booking click
+
         print("Navigating to cart...")
-        # Re-locate cart button
         cart_button_locator = (By.XPATH, "//a[normalize-space()='View Cart']")
-        cart_button = self.wait.until(EC.element_to_be_clickable(cart_button_locator))
-        cart_button.click()
+        try:
+            # Wait for clickable and then click
+            cart_button = self.wait.until(EC.element_to_be_clickable(cart_button_locator))
+            cart_button.click()
+        except TimeoutException:
+             self.fail("Timed out waiting for 'View Cart' button to be clickable.")
+        except ElementClickInterceptedException:
+             print("Standard click failed for View Cart. Trying JS click...")
+             try:
+                 # Find the element again before JS click, just in case
+                 cart_button_element = self.wait.until(EC.presence_of_element_located(cart_button_locator))
+                 driver.execute_script("arguments[0].click();", cart_button_element)
+                 print("View Cart clicked using JavaScript.")
+             except Exception as js_e:
+                 self.fail(f"Both clicks failed for 'View Cart' button. JS Error: {js_e}")
+        except Exception as e:
+             self.fail(f"Error clicking 'View Cart': {e}")
+
         self.wait.until(EC.url_to_be(self.base_url + "/cart"))
         print("On cart page.")
 
+        # ... (rest of test_book_package_and_verify_history remains the same) ...
         # 4. Proceed to Checkout
         print("Proceeding to checkout...")
         checkout_button_locator = (By.XPATH, "//a[contains(@class, 'checkout-btn')]")
@@ -340,8 +355,10 @@ class TravelEasyAppTests(unittest.TestCase):
 
         print("test_book_package_and_verify_history PASSED")
 
+
     def test_view_history_and_print_bill(self):
         """Tests viewing a booking from history and attempting to print the bill."""
+        # ... (test_view_history_and_print_bill remains the same, including the 3 sec delay) ...
         print("Running test_view_history_and_print_bill...")
         driver = self.driver
         package_name_in_history = "Paris" # Package to look for in history
@@ -404,8 +421,9 @@ class TravelEasyAppTests(unittest.TestCase):
             clickable_print_button = self.wait.until(EC.element_to_be_clickable(print_button_locator))
             clickable_print_button.click()
             print("Clicked 'Print Bill' button. Assuming print dialog was triggered (cannot verify directly).")
-            # Add a small pause in case the print dialog interferes with subsequent actions (though unlikely needed)
-            time.sleep(1)
+            # **** ADDED DELAY ****
+            print("Waiting 3 seconds after print click...")
+            time.sleep(3)
 
         except TimeoutException:
             self.fail("Timed out waiting for 'Print Bill' button.")
@@ -414,7 +432,9 @@ class TravelEasyAppTests(unittest.TestCase):
              try:
                  driver.execute_script("arguments[0].click();", print_button)
                  print("Print Bill clicked using JavaScript. Assuming print dialog was triggered.")
-                 time.sleep(1)
+                 # **** ADDED DELAY ****
+                 print("Waiting 3 seconds after print click...")
+                 time.sleep(3)
              except Exception as js_e:
                  self.fail(f"Both clicks failed for 'Print Bill' button. JS Error: {js_e}")
         except Exception as e:
@@ -423,9 +443,9 @@ class TravelEasyAppTests(unittest.TestCase):
         # 5. Test Conclusion (No direct dialog verification possible)
         print("test_view_history_and_print_bill PASSED (Print dialog trigger assumed)")
 
-    # --- NEW TEST CASE ---
     def test_logout(self):
         """Tests logging out from the dashboard."""
+        # ... (test_logout remains the same) ...
         print("Running test_logout...")
         driver = self.driver
 
@@ -465,4 +485,5 @@ class TravelEasyAppTests(unittest.TestCase):
 if __name__ == "__main__":
     # IMPORTANT: Ensure you have a user 'admin' with password 'admin' in your DB
     # AND that this user has a completed booking for 'Paris' in their history.
+    # Reverted to standard unittest.main for running via `python -m unittest`
     unittest.main(verbosity=2)
