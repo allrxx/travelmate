@@ -81,6 +81,7 @@ class TravelEasyAppTests(unittest.TestCase):
 
     def test_signup_and_login(self):
         """Tests signing up a new user and then logging in with those credentials."""
+        # ... (test_signup_and_login remains the same) ...
         print("Running test_signup_and_login...")
         driver = self.driver
         driver.get(self.base_url + "/login") # Start at login page for signup link
@@ -126,20 +127,19 @@ class TravelEasyAppTests(unittest.TestCase):
 
         print("test_signup_and_login PASSED")
 
-    # --- NEW TEST CASE ---
     def test_add_package_to_cart(self):
         """Tests adding a package to the cart and verifying it."""
         print("Running test_add_package_to_cart...")
         driver = self.driver
         # Use admin credentials, ensure this user exists
-        self._login("admin", "admin") 
+        self._login("admin", "admin")
 
         # --- Booking Phase ---
         # Find the "Book Now" button for the first package (Paris)
         print("Finding 'Book Now' button for the first package...")
         book_button_locator = (By.XPATH, "(//button[normalize-space()='Book Now'])[1]")
         # Find the element first to scroll it
-        book_button = self.wait.until(EC.presence_of_element_located(book_button_locator)) 
+        book_button = self.wait.until(EC.presence_of_element_located(book_button_locator))
 
         # Find package name more reliably
         package_card = driver.find_element(By.XPATH, "(//div[contains(@class, 'dashboard-card')])[1]")
@@ -172,7 +172,9 @@ class TravelEasyAppTests(unittest.TestCase):
         # --- Cart Verification Phase ---
         # Navigate to the cart using WebDriverWait
         print("Navigating to cart...")
-        cart_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[normalize-space()='View Cart']")))
+        # **** FIX: Re-locate the cart button AFTER the book button click ****
+        cart_button_locator = (By.XPATH, "//a[normalize-space()='View Cart']")
+        cart_button = self.wait.until(EC.element_to_be_clickable(cart_button_locator))
         cart_button.click()
 
         # Wait for cart URL
@@ -195,7 +197,272 @@ class TravelEasyAppTests(unittest.TestCase):
 
         print("test_add_package_to_cart PASSED")
 
+    def test_book_package_and_verify_history(self):
+        """Tests the full flow: book, checkout, verify bill, verify history."""
+        # ... (test_book_package_and_verify_history remains the same up to step 6) ...
+        print("Running test_book_package_and_verify_history...")
+        driver = self.driver
+        package_to_book = "Paris" # Define the package we are testing with
+
+        # 1. Login
+        self._login("admin", "admin") # Ensure admin user exists
+
+        # 2. Book Package (Paris - assuming it's the first one)
+        print(f"Finding 'Book Now' for {package_to_book}...")
+        book_button_locator = (By.XPATH, f"//div[contains(@class, 'dashboard-card')][.//h5[contains(text(), '{package_to_book}')]]//button[normalize-space()='Book Now']")
+        book_button = self.wait.until(EC.presence_of_element_located(book_button_locator))
+
+        try:
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", book_button)
+            time.sleep(0.5)
+            clickable_book_button = self.wait.until(EC.element_to_be_clickable(book_button_locator))
+            clickable_book_button.click()
+            print(f"Book Now clicked for {package_to_book}.")
+        except ElementClickInterceptedException:
+            print("Standard click failed for Book Now. Trying JS click...")
+            try:
+                driver.execute_script("arguments[0].click();", book_button)
+                print("Book Now clicked using JavaScript.")
+            except Exception as js_e:
+                self.fail(f"Both clicks failed for 'Book Now' button. JS Error: {js_e}")
+        except Exception as e:
+             self.fail(f"Error clicking 'Book Now': {e}")
+
+        # 3. Navigate to Cart
+        print("Navigating to cart...")
+        # Re-locate cart button
+        cart_button_locator = (By.XPATH, "//a[normalize-space()='View Cart']")
+        cart_button = self.wait.until(EC.element_to_be_clickable(cart_button_locator))
+        cart_button.click()
+        self.wait.until(EC.url_to_be(self.base_url + "/cart"))
+        print("On cart page.")
+
+        # 4. Proceed to Checkout
+        print("Proceeding to checkout...")
+        checkout_button_locator = (By.XPATH, "//a[contains(@class, 'checkout-btn')]")
+        checkout_button = self.wait.until(EC.presence_of_element_located(checkout_button_locator))
+        try:
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", checkout_button)
+            time.sleep(0.5)
+            clickable_checkout_button = self.wait.until(EC.element_to_be_clickable(checkout_button_locator))
+            clickable_checkout_button.click()
+            print("Proceed to Checkout clicked.")
+        except ElementClickInterceptedException:
+             print("Standard click failed for Checkout. Trying JS click...")
+             try:
+                 driver.execute_script("arguments[0].click();", checkout_button)
+                 print("Checkout clicked using JavaScript.")
+             except Exception as js_e:
+                 self.fail(f"Both clicks failed for 'Checkout' button. JS Error: {js_e}")
+        except Exception as e:
+             self.fail(f"Error clicking 'Checkout': {e}")
+
+        # 5. Confirm Payment Method
+        self.wait.until(EC.url_to_be(self.base_url + "/payment"))
+        print("On payment page. Confirming payment method...")
+        # Assuming default (Credit Card) is selected, find and click confirm button
+        confirm_payment_button_locator = (By.XPATH, "//button[contains(@class, 'submit-btn')]")
+        confirm_payment_button = self.wait.until(EC.presence_of_element_located(confirm_payment_button_locator))
+        try:
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", confirm_payment_button)
+            time.sleep(0.5)
+            clickable_confirm_button = self.wait.until(EC.element_to_be_clickable(confirm_payment_button_locator))
+            clickable_confirm_button.click()
+            print("Confirm Payment Method clicked.")
+        except ElementClickInterceptedException:
+             print("Standard click failed for Confirm Payment. Trying JS click...")
+             try:
+                 driver.execute_script("arguments[0].click();", confirm_payment_button)
+                 print("Confirm Payment clicked using JavaScript.")
+             except Exception as js_e:
+                 self.fail(f"Both clicks failed for 'Confirm Payment' button. JS Error: {js_e}")
+        except Exception as e:
+             self.fail(f"Error clicking 'Confirm Payment': {e}")
+
+        # 6. Verify Bill Page (Generated after payment)
+        self.wait.until(EC.url_to_be(self.base_url + "/bill")) # Wait for the immediate bill page
+        print("On immediate bill page after payment.")
+        try:
+            # Check for the specific header text on the bill page generated right after payment
+            bill_header = self.wait.until(EC.presence_of_element_located((By.XPATH, "//div[@class='bill-header']/h2")))
+            # **** FIX: Expect "Booking Confirmation" on the immediate bill page ****
+            self.assertIn("Booking Confirmation", bill_header.text, "Immediate bill page header does not contain 'Booking Confirmation'")
+            print("Verified 'Booking Confirmation' text on immediate bill page.")
+        except TimeoutException:
+            self.fail("Timed out waiting for immediate bill page header.")
+        except NoSuchElementException:
+            self.fail("Could not find immediate bill page header element.")
+
+        # 7. Navigate Back to Dashboard
+        print("Navigating back to dashboard...")
+        back_button_locator = (By.XPATH, "//a[contains(@class, 'btn-primary') and normalize-space()='Back to Dashboard']")
+        # Find the element first
+        back_to_dashboard_button = self.wait.until(EC.presence_of_element_located(back_button_locator))
+
+        try:
+            # Scroll into view
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", back_to_dashboard_button)
+            time.sleep(0.5)
+            # Wait until clickable *after* scrolling
+            clickable_back_button = self.wait.until(EC.element_to_be_clickable(back_button_locator))
+            clickable_back_button.click()
+            print("Back to Dashboard button clicked successfully.")
+        except ElementClickInterceptedException:
+            print("Standard click failed for Back to Dashboard. Trying JS click...")
+            try:
+                # Fallback: Use JavaScript click
+                driver.execute_script("arguments[0].click();", back_to_dashboard_button)
+                print("Back to Dashboard clicked using JavaScript.")
+            except Exception as js_e:
+                self.fail(f"Both clicks failed for 'Back to Dashboard' button. JS Error: {js_e}")
+        except Exception as e:
+             self.fail(f"Error clicking 'Back to Dashboard': {e}")
+
+        # Wait for dashboard URL after click
+        self.wait.until(EC.url_to_be(self.base_url + "/dashboard"))
+        print("On dashboard page.")
+
+        # 8. Verify Booking History
+        print(f"Verifying '{package_to_book}' in booking history...")
+        try:
+            # Look for the list group item containing the package name
+            history_item_locator = (By.XPATH, f"//div[contains(@class, 'list-group')]//a[contains(@class, 'list-group-item')][.//h5[contains(text(), '{package_to_book}')]]")
+            history_item = self.wait.until(EC.presence_of_element_located(history_item_locator))
+            self.assertIsNotNone(history_item, f"Booking history item for '{package_to_book}' not found.")
+            # Optionally check status
+            status_element = history_item.find_element(By.XPATH, ".//small[contains(@class, 'text-success')]") # Assuming completed status
+            self.assertIn("Completed", status_element.text, "Booking status is not 'Completed' in history.")
+            print(f"'{package_to_book}' found in booking history with correct status.")
+        except TimeoutException:
+            self.fail(f"Timed out waiting for booking history item for '{package_to_book}'.")
+        except NoSuchElementException:
+            self.fail(f"Could not find booking history item or status for '{package_to_book}'.")
+
+        print("test_book_package_and_verify_history PASSED")
+
+    def test_view_history_and_print_bill(self):
+        """Tests viewing a booking from history and attempting to print the bill."""
+        print("Running test_view_history_and_print_bill...")
+        driver = self.driver
+        package_name_in_history = "Paris" # Package to look for in history
+
+        # 1. Login
+        self._login("admin", "admin") # Ensure admin user exists
+
+        # 2. Find and Click History Item
+        print(f"Finding '{package_name_in_history}' in booking history...")
+        history_item_locator = (By.XPATH, f"//div[contains(@class, 'list-group')]//a[contains(@class, 'list-group-item')][.//h5[contains(text(), '{package_name_in_history}')]]")
+        try:
+            history_item = self.wait.until(EC.presence_of_element_located(history_item_locator))
+            # Get the expected bill URL from the link's href
+            # expected_bill_url = history_item.get_attribute('href') # Not strictly needed if using url_matches
+            print(f"Found history item for '{package_name_in_history}'. Clicking...")
+
+            # Scroll and click the history item
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", history_item)
+            time.sleep(0.5)
+            clickable_history_item = self.wait.until(EC.element_to_be_clickable(history_item_locator))
+            clickable_history_item.click()
+
+        except TimeoutException:
+            self.fail(f"Timed out waiting for booking history item for '{package_name_in_history}'. Ensure this booking exists.")
+        except NoSuchElementException:
+            self.fail(f"Could not find booking history item for '{package_name_in_history}'. Ensure this booking exists.")
+        except ElementClickInterceptedException:
+             print("Standard click failed for history item. Trying JS click...")
+             try:
+                 driver.execute_script("arguments[0].click();", history_item)
+                 print("History item clicked using JavaScript.")
+             except Exception as js_e:
+                 self.fail(f"Both clicks failed for history item. JS Error: {js_e}")
+        except Exception as e:
+             self.fail(f"Error clicking history item: {e}")
+
+        # 3. Verify Navigation to Bill Page (from History)
+        try:
+            # Wait for the URL to match the pattern /bill/some_id
+            self.wait.until(EC.url_matches(f"{self.base_url}/bill/\\d+"))
+            print(f"Navigated to bill page from history: {driver.current_url}")
+            # Also verify the header again for certainty
+            bill_header = self.wait.until(EC.presence_of_element_located((By.XPATH, "//div[@class='bill-header']/h2")))
+            # **** FIX: Expect "Booking Details" when viewing from history ****
+            self.assertIn("Booking Details", bill_header.text, "Bill page header is incorrect when viewing from history.")
+            print("Verified 'Booking Details' text on bill page from history.")
+        except TimeoutException:
+            self.fail(f"Did not navigate to the expected bill page URL pattern from history. Current URL: {driver.current_url}")
+
+        # 4. Find and Click Print Bill Button
+        print("Finding 'Print Bill' button...")
+        # Corrected XPath for the print button based on bill.html
+        print_button_locator = (By.XPATH, "//button[contains(@class, 'btn-outline') and contains(., 'Print Bill')]")
+        try:
+            print_button = self.wait.until(EC.presence_of_element_located(print_button_locator))
+
+            # Scroll and click
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", print_button)
+            time.sleep(0.5)
+            clickable_print_button = self.wait.until(EC.element_to_be_clickable(print_button_locator))
+            clickable_print_button.click()
+            print("Clicked 'Print Bill' button. Assuming print dialog was triggered (cannot verify directly).")
+            # Add a small pause in case the print dialog interferes with subsequent actions (though unlikely needed)
+            time.sleep(1)
+
+        except TimeoutException:
+            self.fail("Timed out waiting for 'Print Bill' button.")
+        except ElementClickInterceptedException:
+             print("Standard click failed for Print Bill. Trying JS click...")
+             try:
+                 driver.execute_script("arguments[0].click();", print_button)
+                 print("Print Bill clicked using JavaScript. Assuming print dialog was triggered.")
+                 time.sleep(1)
+             except Exception as js_e:
+                 self.fail(f"Both clicks failed for 'Print Bill' button. JS Error: {js_e}")
+        except Exception as e:
+             self.fail(f"Error clicking 'Print Bill' button: {e}")
+
+        # 5. Test Conclusion (No direct dialog verification possible)
+        print("test_view_history_and_print_bill PASSED (Print dialog trigger assumed)")
+
+    # --- NEW TEST CASE ---
+    def test_logout(self):
+        """Tests logging out from the dashboard."""
+        print("Running test_logout...")
+        driver = self.driver
+
+        # 1. Login
+        self._login("admin", "admin") # Ensure admin user exists
+
+        # 2. Find and Click Logout Button
+        print("Finding logout button on dashboard...")
+        # XPath based on dashboard.html: <a href="/logout" class="btn btn-danger">...Logout</a>
+        logout_button_locator = (By.XPATH, "//a[contains(@class, 'btn-danger') and contains(., 'Logout')]")
+        try:
+            # Wait for the button to be clickable
+            logout_button = self.wait.until(EC.element_to_be_clickable(logout_button_locator))
+            print("Logout button found. Clicking...")
+            logout_button.click()
+        except TimeoutException:
+            self.fail("Timed out waiting for the logout button on the dashboard.")
+        except NoSuchElementException:
+            self.fail("Could not find the logout button on the dashboard.")
+        except Exception as e:
+            self.fail(f"An error occurred clicking the logout button: {e}")
+
+        # 3. Verify Redirection to Login Page
+        try:
+            # Wait for the URL to become the login page URL
+            self.wait.until(EC.url_to_be(self.base_url + "/login"))
+            print(f"Successfully redirected to login page: {driver.current_url}")
+            # Optionally, check for a known element on the login page
+            self.wait.until(EC.presence_of_element_located((By.XPATH, "//h2[normalize-space()='Welcome Back']")))
+            print("Verified presence of login page header.")
+        except TimeoutException:
+            self.fail(f"Did not redirect to the login page after logout. Current URL: {driver.current_url}")
+
+        print("test_logout PASSED")
+
 
 if __name__ == "__main__":
     # IMPORTANT: Ensure you have a user 'admin' with password 'admin' in your DB
+    # AND that this user has a completed booking for 'Paris' in their history.
     unittest.main(verbosity=2)
